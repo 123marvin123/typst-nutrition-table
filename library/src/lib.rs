@@ -9,6 +9,7 @@ pub mod shared;
 pub mod symbols;
 pub mod text;
 pub mod visualize;
+pub mod off;
 
 use typst::diag::At;
 use typst::eval::{LangItems, Library, Module, Scope};
@@ -21,12 +22,13 @@ use self::layout::LayoutRoot;
 pub fn build() -> Library {
     let math = math::module();
     let calc = compute::calc::module();
-    let global = global(math.clone(), calc);
+    let off = off::module();
+    let global = global(math.clone(), calc, off);
     Library { global, math, styles: styles(), items: items() }
 }
 
 /// Construct the module with global definitions.
-fn global(math: Module, calc: Module) -> Module {
+fn global(math: Module, calc: Module, off: Module) -> Module {
     let mut global = Scope::deduplicating();
 
     // Text.
@@ -162,6 +164,9 @@ fn global(math: Module, calc: Module) -> Module {
     global.define("top", GenAlign::Specific(Align::Top));
     global.define("horizon", GenAlign::Specific(Align::Horizon));
     global.define("bottom", GenAlign::Specific(Align::Bottom));
+
+    // OpenFoodFacts-related functions.
+    global.define("off", off);
 
     Module::new("global").with_scope(global)
 }

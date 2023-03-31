@@ -32,6 +32,13 @@ need to compile Typst documents locally. For the best writing experience,
 consider signing up to our [collaborative online editor][app] for free. It is
 currently in public beta.
 
+## OpenFoodFacts
+
+Create nutrition plans using Typst:
+<p align="center">
+ <img alt="Example" width="900" src="assets/images/example.jpg"/>
+</p>
+
 ## Example
 A [gentle introduction][tutorial] to Typst is available in our documentation.
 However, if you want to see the power of Typst encapsulated in one image, here
