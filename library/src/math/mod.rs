@@ -267,6 +267,8 @@ impl Count for EquationElem {
 impl LocalName for EquationElem {
     fn local_name(&self, lang: Lang) -> &'static str {
         match lang {
+            Lang::FRENCH => "Équation",
+            Lang::CHINESE => "等式",
             Lang::GERMAN => "Gleichung",
             Lang::ITALIAN => "Equazione",
             Lang::RUSSIAN => "Уравнение",
@@ -295,7 +297,7 @@ impl LayoutMath for Content {
         }
 
         if let Some((elem, styles)) = self.to_styled() {
-            if TextElem::font_in(ctx.styles().chain(&styles))
+            if TextElem::font_in(ctx.styles().chain(styles))
                 != TextElem::font_in(ctx.styles())
             {
                 let frame = ctx.layout_content(self)?;
