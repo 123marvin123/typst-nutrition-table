@@ -18,7 +18,7 @@ pub fn module() -> Module {
 #[func]
 pub fn product(
     /// The barcode of the product to query.
-    barcode: Spanned<EcoString>,
+    barcode: EcoString,
     /// How to scale the nutriment values.
     #[named]
     #[default(Ratio::one())]
@@ -31,7 +31,7 @@ pub fn product(
     let client = off::v2().locale(Locale::from("de")).build().unwrap();
     let output = Output::new().fields("product_name,nutriments,nutriscore_grade");
 
-    let response = client.product(barcode.v.as_str(), Some(output));
+    let response = client.product(barcode.as_str(), Some(output));
     let mut status_code = 0;
     let scale = scaled.get();
     let scale_fn = |f: f64| Some(f * scale);
