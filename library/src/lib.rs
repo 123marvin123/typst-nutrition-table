@@ -4,12 +4,12 @@ pub mod compute;
 pub mod layout;
 pub mod math;
 pub mod meta;
+pub mod off;
 pub mod prelude;
 pub mod shared;
 pub mod symbols;
 pub mod text;
 pub mod visualize;
-pub mod off;
 
 use typst::diag::At;
 use typst::eval::{LangItems, Library, Module, Scope};

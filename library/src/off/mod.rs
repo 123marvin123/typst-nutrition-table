@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use typst::eval::{Module, Scope, Value};
 use crate::prelude::*;
 use openfoodfacts::{self as off, Locale, Output};
+use std::collections::HashMap;
+use typst::eval::{Module, Scope, Value};
 
 pub fn module() -> Module {
     let mut off = Scope::deduplicating();
@@ -49,62 +49,75 @@ pub fn product(
         let nutriments = &product["nutriments"];
         let mut nutriment_dict = Dict::new();
 
-        nutriment_dict.insert("proteins".into(),
-                              nutriments["proteins_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "proteins".into(),
+            nutriments["proteins_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
-        nutriment_dict.insert("carbohydrates".into(),
-                              nutriments["carbohydrates_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "carbohydrates".into(),
+            nutriments["carbohydrates_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
-        nutriment_dict.insert("energy".into(),
-                              nutriments["energy-kcal_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "energy".into(),
+            nutriments["energy-kcal_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
-        nutriment_dict.insert("fat".into(),
-                              nutriments["fat_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "fat".into(),
+            nutriments["fat_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
-        nutriment_dict.insert("salt".into(),
-                              nutriments["salt_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "salt".into(),
+            nutriments["salt_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
-        nutriment_dict.insert("saturated-fat".into(),
-                              nutriments["saturated-fat_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "saturated-fat".into(),
+            nutriments["saturated-fat_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
-        nutriment_dict.insert("sugar".into(),
-                              nutriments["sugars_100g"].as_f64()
-                                  .and_then(scale_fn)
-                                  .into());
+        nutriment_dict.insert(
+            "sugar".into(),
+            nutriments["sugars_100g"].as_f64().and_then(scale_fn).into(),
+        );
 
         let mut units_dict = Dict::new();
 
         units_dict.insert("proteins".into(), nutriments["proteins_unit"].as_str().into());
-        units_dict.insert("carbohydrates".into(), nutriments["carbohydrates_unit"].as_str().into());
-        units_dict.insert("energy".into(), nutriments["energy-kcal_unit"].as_str().into());
+        units_dict.insert(
+            "carbohydrates".into(),
+            nutriments["carbohydrates_unit"].as_str().into(),
+        );
+        units_dict
+            .insert("energy".into(), nutriments["energy-kcal_unit"].as_str().into());
         units_dict.insert("fat".into(), nutriments["fat_unit"].as_str().into());
         units_dict.insert("salt".into(), nutriments["salt_unit"].as_str().into());
-        units_dict.insert("saturated-fat".into(), nutriments["saturated-fat_unit"].as_str().into());
+        units_dict.insert(
+            "saturated-fat".into(),
+            nutriments["saturated-fat_unit"].as_str().into(),
+        );
         units_dict.insert("sugar".into(), nutriments["sugars_unit"].as_str().into());
 
         result.insert("nutriments".into(), nutriment_dict.into());
         result.insert("units".into(), units_dict.into());
 
-        result.insert("nutriscore".into(),
-                      product.get("nutriscore_grade")
-                          .unwrap_or(&serde_json::Value::from("?"))
-                          .as_str()
-                          .into(),
+        result.insert(
+            "nutriscore".into(),
+            product
+                .get("nutriscore_grade")
+                .unwrap_or(&serde_json::Value::from("?"))
+                .as_str()
+                .into(),
         );
 
-        result.insert("url".into(), format!("https://world.openfoodfacts.org/product/{}", barcode.v.as_str()).into());
+        result.insert(
+            "url".into(),
+            format!("https://world.openfoodfacts.org/product/{}", barcode.as_str())
+                .into(),
+        );
     }
 
     result.insert("ok".into(), if status_code == 0 { false.into() } else { true.into() });

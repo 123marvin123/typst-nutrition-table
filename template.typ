@@ -28,8 +28,8 @@
   [#calc.round(prod.nutriments.fat, digits: 2) #prod.units.fat], [#calc.round(prod.nutriments.salt, digits: 2) #prod.units.salt])
 }
 
-#let create_pseudo_product(name, cals, carbs, proteins, fats, salts, url: "", nutriscore: "?") = {
-  (name: name, scale: 1.0,
+#let create_pseudo_product(name, cals, carbs, proteins, fats, salts, url: "", nutriscore: "?", scale: 1.0) = {
+  (name: name, scale: scale,
     nutriments: (carbohydrates: carbs, energy: cals, proteins: proteins, fat: fats, salt: salts), 
     units: (carbohydrates: "g", energy: "kcal", proteins: "g", fat: "g", salt: "g"),
     nutriscore: nutriscore,
@@ -67,7 +67,7 @@
   let proteins = calc.round(meal_plan.map(p => p.map(k => k.nutriments.proteins).fold(0, fold_sum)).fold(0, fold_sum));
   let carbohydrates = calc.round(meal_plan.map(p => p.map(k => k.nutriments.carbohydrates).fold(0, fold_sum)).fold(0, fold_sum));
   let fat = calc.round(meal_plan.map(p => p.map(k => k.nutriments.fat).fold(0, fold_sum)).fold(0, fold_sum));
-  let salt = calc.round(meal_plan.map(p => p.map(k => k.nutriments.salt).fold(0, fold_sum)).fold(0, fold_sum));
+  let salt = calc.round(meal_plan.map(p => p.map(k => k.nutriments.salt).fold(0, fold_sum)).fold(0, fold_sum), digits: 1);
 
   (energy: calories, proteins: proteins, carbohydrates: carbohydrates, fat: fat, salt: salt)
 }
