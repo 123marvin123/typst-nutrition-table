@@ -17,7 +17,7 @@ use memmap2::Mmap;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use once_cell::unsync::OnceCell;
 use same_file::{is_same_file, Handle};
-use siphasher::sip128::{Hasher128, SipHasher};
+use siphasher::sip128::{Hasher128, SipHasher13};
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use typst::diag::{FileError, FileResult, SourceError, StrResult};
 use typst::eval::Library;
@@ -348,13 +348,9 @@ fn print_diagnostics(
 /// - The given viewer provided by `open` if it is `Some`.
 fn open_file(open: Option<&str>, path: &Path) -> StrResult<()> {
     if let Some(app) = open {
-        open::with(path, app).map_err(|err| {
-            format!("failed to open `{}` with `{}`, reason: {}", path.display(), app, err)
-        })?;
+        open::with_in_background(path, app);
     } else {
-        open::that(path).map_err(|err| {
-            format!("failed to open `{}`, reason: {}", path.display(), err)
-        })?;
+        open::that_in_background(path);
     }
 
     Ok(())
@@ -363,10 +359,8 @@ fn open_file(open: Option<&str>, path: &Path) -> StrResult<()> {
 /// Execute a font listing command.
 fn fonts(command: FontsSettings) -> StrResult<()> {
     let mut searcher = FontSearcher::new();
-    searcher.search_system();
-    for path in &command.font_paths {
-        searcher.search_dir(path)
-    }
+    searcher.search(&command.font_paths);
+
     for (name, infos) in searcher.book.families() {
         println!("{name}");
         if command.variants {
@@ -409,14 +403,7 @@ struct PathSlot {
 impl SystemWorld {
     fn new(root: PathBuf, font_paths: &[PathBuf]) -> Self {
         let mut searcher = FontSearcher::new();
-        searcher.search_system();
-
-        #[cfg(feature = "embed-fonts")]
-        searcher.add_embedded();
-
-        for path in font_paths {
-            searcher.search_dir(path)
-        }
+        searcher.search(font_paths);
 
         Self {
             root,
@@ -548,7 +535,7 @@ impl PathHash {
     fn new(path: &Path) -> FileResult<Self> {
         let f = |e| FileError::from_io(e, path);
         let handle = Handle::from_path(path).map_err(f)?;
-        let mut state = SipHasher::new();
+        let mut state = SipHasher13::new();
         handle.hash(&mut state);
         Ok(Self(state.finish128().as_u128()))
     }
@@ -628,10 +615,22 @@ impl FontSearcher {
         Self { book: FontBook::new(), fonts: vec![] }
     }
 
+    /// Search everything that is available.
+    fn search(&mut self, font_paths: &[PathBuf]) {
+        self.search_system();
+
+        #[cfg(feature = "embed-fonts")]
+        self.search_embedded();
+
+        for path in font_paths {
+            self.search_dir(path)
+        }
+    }
+
     /// Add fonts that are embedded in the binary.
     #[cfg(feature = "embed-fonts")]
-    fn add_embedded(&mut self) {
-        let mut add = |bytes: &'static [u8]| {
+    fn search_embedded(&mut self) {
+        let mut search = |bytes: &'static [u8]| {
             let buffer = Buffer::from_static(bytes);
             for (i, font) in Font::iter(buffer).enumerate() {
                 self.book.push(font.info().clone());
@@ -644,20 +643,20 @@ impl FontSearcher {
         };
 
         // Embed default fonts.
-        add(include_bytes!("../../assets/fonts/LinLibertine_R.ttf"));
-        add(include_bytes!("../../assets/fonts/LinLibertine_RB.ttf"));
-        add(include_bytes!("../../assets/fonts/LinLibertine_RBI.ttf"));
-        add(include_bytes!("../../assets/fonts/LinLibertine_RI.ttf"));
-        add(include_bytes!("../../assets/fonts/NewCMMath-Book.otf"));
-        add(include_bytes!("../../assets/fonts/NewCMMath-Regular.otf"));
-        add(include_bytes!("../../assets/fonts/NewCM10-Regular.otf"));
-        add(include_bytes!("../../assets/fonts/NewCM10-Bold.otf"));
-        add(include_bytes!("../../assets/fonts/NewCM10-Italic.otf"));
-        add(include_bytes!("../../assets/fonts/NewCM10-BoldItalic.otf"));
-        add(include_bytes!("../../assets/fonts/DejaVuSansMono.ttf"));
-        add(include_bytes!("../../assets/fonts/DejaVuSansMono-Bold.ttf"));
-        add(include_bytes!("../../assets/fonts/DejaVuSansMono-Oblique.ttf"));
-        add(include_bytes!("../../assets/fonts/DejaVuSansMono-BoldOblique.ttf"));
+        search(include_bytes!("../../assets/fonts/LinLibertine_R.ttf"));
+        search(include_bytes!("../../assets/fonts/LinLibertine_RB.ttf"));
+        search(include_bytes!("../../assets/fonts/LinLibertine_RBI.ttf"));
+        search(include_bytes!("../../assets/fonts/LinLibertine_RI.ttf"));
+        search(include_bytes!("../../assets/fonts/NewCMMath-Book.otf"));
+        search(include_bytes!("../../assets/fonts/NewCMMath-Regular.otf"));
+        search(include_bytes!("../../assets/fonts/NewCM10-Regular.otf"));
+        search(include_bytes!("../../assets/fonts/NewCM10-Bold.otf"));
+        search(include_bytes!("../../assets/fonts/NewCM10-Italic.otf"));
+        search(include_bytes!("../../assets/fonts/NewCM10-BoldItalic.otf"));
+        search(include_bytes!("../../assets/fonts/DejaVuSansMono.ttf"));
+        search(include_bytes!("../../assets/fonts/DejaVuSansMono-Bold.ttf"));
+        search(include_bytes!("../../assets/fonts/DejaVuSansMono-Oblique.ttf"));
+        search(include_bytes!("../../assets/fonts/DejaVuSansMono-BoldOblique.ttf"));
     }
 
     /// Search for fonts in the linux system font directories.

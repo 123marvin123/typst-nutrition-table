@@ -1,8 +1,13 @@
 [package]
 name = "typst-library"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["The Typst Project Developers"]
 edition = "2021"
+description = "The standard library for Typst."
+homepage = "https://typst.app"
+repository = "https://github.com/typst/typst"
+license = "Apache-2.0"
+keywords = ["typst"]
 
 [lib]
 test = false
@@ -11,7 +16,7 @@ bench = false
 
 [dependencies]
 typst = { path = ".." }
-comemo = "0.2"
+comemo = "0.2.2"
 csv = "1"
 ecow = "0.1"
 hayagriva = "0.3"
@@ -33,5 +38,5 @@ unicode-math-class = "0.1"
 unicode-script = "0.5"
 unicode-segmentation = "1"
 xi-unicode = "0.3"
-chinese-number = { version = "0.7", default-features = false, features = ["number-to-chinese"] }
 openfoodfacts = { git = "https://github.com/openfoodfacts/openfoodfacts-rust" }
+chinese-number = { version = "0.7.1", default-features = false, features = ["number-to-chinese"] }

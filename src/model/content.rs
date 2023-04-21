@@ -3,11 +3,12 @@ use std::fmt::{self, Debug, Formatter, Write};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign};
 
+use comemo::Prehashed;
 use ecow::{eco_format, EcoString, EcoVec};
 
 use super::{
     element, Behave, Behaviour, ElemFunc, Element, Fold, Guard, Label, Locatable,
-    Location, Recipe, Selector, Style, Styles, Synthesize,
+    Location, PlainText, Recipe, Selector, Style, Styles, Synthesize,
 };
 use crate::diag::{SourceResult, StrResult};
 use crate::doc::Meta;
@@ -16,8 +17,8 @@ use crate::syntax::Span;
 use crate::util::pretty_array_like;
 
 /// Composable representation of styled content.
-#[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(Clone, Hash)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 pub struct Content {
     func: ElemFunc,
     attrs: EcoVec<Attr>,
@@ -28,8 +29,8 @@ pub struct Content {
 enum Attr {
     Span(Span),
     Field(EcoString),
-    Value(Value),
-    Child(Content),
+    Value(Prehashed<Value>),
+    Child(Prehashed<Content>),
     Styles(Styles),
     Prepared,
     Guard(Guard),
@@ -53,9 +54,11 @@ impl Content {
         let Some(first) = iter.next() else { return Self::empty() };
         let Some(second) = iter.next() else { return first };
         let mut content = Content::empty();
-        content.attrs.push(Attr::Child(first));
-        content.attrs.push(Attr::Child(second));
-        content.attrs.extend(iter.map(Attr::Child));
+        content.attrs.push(Attr::Child(Prehashed::new(first)));
+        content.attrs.push(Attr::Child(Prehashed::new(second)));
+        content
+            .attrs
+            .extend(iter.map(|child| Attr::Child(Prehashed::new(child))));
         content
     }
 
@@ -163,10 +166,10 @@ impl Content {
             Attr::Field(field) => *field == name,
             _ => false,
         }) {
-            self.attrs.make_mut()[i + 1] = Attr::Value(value.into());
+            self.attrs.make_mut()[i + 1] = Attr::Value(Prehashed::new(value.into()));
         } else {
             self.attrs.push(Attr::Field(name));
-            self.attrs.push(Attr::Value(value.into()));
+            self.attrs.push(Attr::Value(Prehashed::new(value.into())));
         }
     }
 
@@ -284,7 +287,7 @@ impl Content {
             self
         } else {
             let mut content = Content::new(StyledElem::func());
-            content.attrs.push(Attr::Child(self));
+            content.attrs.push(Attr::Child(Prehashed::new(self)));
             content.attrs.push(Attr::Styles(styles));
             content
         }
@@ -356,40 +359,53 @@ impl Content {
 
     /// Queries the content tree for all elements that match the given selector.
     ///
-    /// # Show rules
     /// Elements produced in `show` rules will not be included in the results.
     pub fn query(&self, selector: Selector) -> Vec<&Content> {
         let mut results = Vec::new();
-        self.query_into(&selector, &mut results);
+        self.traverse(&mut |element| {
+            if selector.matches(element) {
+                results.push(element);
+            }
+        });
         results
     }
 
-    /// Queries the content tree for all elements that match the given selector
-    /// and stores the results inside of the `results` vec.
-    fn query_into<'a>(&'a self, selector: &Selector, results: &mut Vec<&'a Content>) {
-        if selector.matches(self) {
-            results.push(self);
-        }
+    /// Extracts the plain text of this content.
+    pub fn plain_text(&self) -> EcoString {
+        let mut text = EcoString::new();
+        self.traverse(&mut |element| {
+            if let Some(textable) = element.with::<dyn PlainText>() {
+                textable.plain_text(&mut text);
+            }
+        });
+        text
+    }
+
+    /// Traverse this content.
+    fn traverse<'a, F>(&'a self, f: &mut F)
+    where
+        F: FnMut(&'a Content),
+    {
+        f(self);
 
         for attr in &self.attrs {
             match attr {
-                Attr::Child(child) => child.query_into(selector, results),
-                Attr::Value(value) => walk_value(&value, selector, results),
+                Attr::Child(child) => child.traverse(f),
+                Attr::Value(value) => walk_value(value, f),
                 _ => {}
             }
         }
 
         /// Walks a given value to find any content that matches the selector.
-        fn walk_value<'a>(
-            value: &'a Value,
-            selector: &Selector,
-            results: &mut Vec<&'a Content>,
-        ) {
+        fn walk_value<'a, F>(value: &'a Value, f: &mut F)
+        where
+            F: FnMut(&'a Content),
+        {
             match value {
-                Value::Content(content) => content.query_into(selector, results),
+                Value::Content(content) => content.traverse(f),
                 Value::Array(array) => {
                     for value in array {
-                        walk_value(value, selector, results);
+                        walk_value(value, f);
                     }
                 }
                 _ => {}
@@ -453,11 +469,11 @@ impl Add for Content {
                 lhs
             }
             (true, false) => {
-                lhs.attrs.push(Attr::Child(rhs));
+                lhs.attrs.push(Attr::Child(Prehashed::new(rhs)));
                 lhs
             }
             (false, true) => {
-                rhs.attrs.insert(0, Attr::Child(lhs));
+                rhs.attrs.insert(0, Attr::Child(Prehashed::new(lhs)));
                 rhs
             }
             (false, false) => Self::sequence([lhs, rhs]),

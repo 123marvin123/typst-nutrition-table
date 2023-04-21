@@ -1,5 +1,6 @@
 use super::{BibliographyElem, CiteElem, Counter, Figurable, Numbering};
 use crate::prelude::*;
+use crate::text::TextElem;
 
 /// A reference to a label or bibliography.
 ///
@@ -84,12 +85,62 @@ pub struct RefElem {
     /// A synthesized citation.
     #[synthesized]
     pub citation: Option<CiteElem>,
+
+    /// Content of the element, it should be referable.
+    ///
+    /// ```example
+    /// #set heading(numbering: (..nums) => {
+    ///   nums.pos().map(str).join(".")
+    ///   }, supplement: [Chapt])
+    ///
+    /// #show ref: it => {
+    ///   if it.has("element") and it.element.func() == heading {
+    ///     let element = it.element
+    ///     "["
+    ///     element.supplement
+    ///     "-"
+    ///     numbering(element.numbering, ..counter(heading).at(element.location()))
+    ///     "]"
+    ///   } else {
+    ///     it
+    ///   }
+    /// }
+    ///
+    /// = Introduction <intro>
+    /// = Summary <sum>
+    /// == Subsection <sub>
+    /// @intro
+    ///
+    /// @sum
+    ///
+    /// @sub
+    /// ```
+    #[synthesized]
+    pub element: Option<Content>,
 }
 
 impl Synthesize for RefElem {
     fn synthesize(&mut self, vt: &mut Vt, styles: StyleChain) -> SourceResult<()> {
         let citation = self.to_citation(vt, styles)?;
         self.push_citation(Some(citation));
+
+        if !vt.introspector.init() {
+            self.push_element(None);
+            return Ok(());
+        }
+
+        // find the element content
+        let target = self.target();
+        let elem = vt.introspector.query_label(&self.target());
+        // not in bibliography, but in document, then push the element
+        if let (false, Ok(elem)) =
+            (BibliographyElem::has(vt, &target.0), elem.at(self.span()))
+        {
+            self.push_element(Some(elem));
+        } else {
+            self.push_element(None);
+        }
+
         Ok(())
     }
 }
@@ -108,7 +159,7 @@ impl Show for RefElem {
                 bail!(self.span(), "label occurs in the document and its bibliography");
             }
 
-            return Ok(self.to_citation(vt, styles)?.pack());
+            return Ok(self.to_citation(vt, styles)?.pack().spanned(self.span()));
         }
 
         let elem = elem.at(self.span())?;
@@ -131,10 +182,11 @@ impl Show for RefElem {
             }
         };
 
+        let lang = TextElem::lang_in(styles);
         let reference = elem
             .with::<dyn Refable>()
             .expect("element should be refable")
-            .reference(vt, styles, supplement)?;
+            .reference(vt, supplement, lang)?;
 
         Ok(reference.linked(Destination::Location(elem.location().unwrap())))
     }
@@ -212,27 +264,27 @@ pub trait Refable {
     fn reference(
         &self,
         vt: &mut Vt,
-        styles: StyleChain,
         supplement: Option<Content>,
+        lang: Lang,
     ) -> SourceResult<Content>;
 
     /// Tries to build an outline element for this element.
     /// If this returns `None`, the outline will not include this element.
     /// By default this just calls [`Refable::reference`].
-    fn outline(&self, vt: &mut Vt, styles: StyleChain) -> SourceResult<Option<Content>> {
-        self.reference(vt, styles, None).map(Some)
+    fn outline(&self, vt: &mut Vt, lang: Lang) -> SourceResult<Option<Content>> {
+        self.reference(vt, None, lang).map(Some)
     }
 
     /// Returns the level of this element.
     /// This is used to determine the level of the outline.
     /// By default this returns `0`.
-    fn level(&self, _styles: StyleChain) -> usize {
+    fn level(&self) -> usize {
         0
     }
 
     /// Returns the numbering of this element.
-    fn numbering(&self, styles: StyleChain) -> Option<Numbering>;
+    fn numbering(&self) -> Option<Numbering>;
 
     /// Returns the counter of this element.
-    fn counter(&self, styles: StyleChain) -> Counter;
+    fn counter(&self) -> Counter;
 }

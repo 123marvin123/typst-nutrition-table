@@ -273,13 +273,18 @@ impl Frame {
     /// Attach the metadata from this style chain to the frame.
     pub fn meta(&mut self, styles: StyleChain, force: bool) {
         if force || !self.is_empty() {
-            for meta in MetaElem::data_in(styles) {
-                if matches!(meta, Meta::Hide) {
-                    self.clear();
-                    break;
-                }
-                self.prepend(Point::zero(), FrameItem::Meta(meta, self.size));
+            self.meta_iter(MetaElem::data_in(styles));
+        }
+    }
+
+    /// Attach metadata from an iterator.
+    pub fn meta_iter(&mut self, iter: impl IntoIterator<Item = Meta>) {
+        for meta in iter {
+            if matches!(meta, Meta::Hide) {
+                self.clear();
+                break;
             }
+            self.prepend(Point::zero(), FrameItem::Meta(meta, self.size));
         }
     }
 
@@ -359,6 +364,7 @@ impl Frame {
                 Geometry::Line(Point::with_x(self.size.x)).stroked(Stroke {
                     paint: Color::RED.into(),
                     thickness: Abs::pt(1.0),
+                    ..Stroke::default()
                 }),
                 Span::detached(),
             ),
@@ -386,6 +392,7 @@ impl Frame {
                 Geometry::Line(Point::with_x(self.size.x)).stroked(Stroke {
                     paint: Color::GREEN.into(),
                     thickness: Abs::pt(1.0),
+                    ..Stroke::default()
                 }),
                 Span::detached(),
             ),
@@ -515,8 +522,10 @@ pub struct Glyph {
 pub struct Lang([u8; 3], u8);
 
 impl Lang {
+    pub const ARABIC: Self = Self(*b"ar ", 2);
     pub const BOKMÅL: Self = Self(*b"nb ", 2);
     pub const CHINESE: Self = Self(*b"zh ", 2);
+    pub const CZECH: Self = Self(*b"cs ", 2);
     pub const ENGLISH: Self = Self(*b"en ", 2);
     pub const FRENCH: Self = Self(*b"fr ", 2);
     pub const GERMAN: Self = Self(*b"de ", 2);
@@ -528,6 +537,7 @@ impl Lang {
     pub const SLOVENIAN: Self = Self(*b"sl ", 2);
     pub const SPANISH: Self = Self(*b"es ", 2);
     pub const UKRAINIAN: Self = Self(*b"ua ", 2);
+    pub const VIETNAMESE: Self = Self(*b"vi ", 2);
 
     /// Return the language code as an all lowercase string slice.
     pub fn as_str(&self) -> &str {

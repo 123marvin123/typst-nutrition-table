@@ -1,5 +1,8 @@
 //! Typst's standard library.
 
+#![allow(clippy::wildcard_in_or_patterns)]
+#![allow(clippy::comparison_chain)]
+
 pub mod compute;
 pub mod layout;
 pub mod math;
@@ -104,6 +107,7 @@ fn global(math: Module, calc: Module, off: Module) -> Module {
     global.define("numbering", meta::numbering);
     global.define("state", meta::state);
     global.define("query", meta::query);
+    global.define("selector", meta::selector);
 
     // Symbols.
     global.define("sym", symbols::sym());
@@ -214,6 +218,7 @@ fn items() -> LangItems {
         },
         bibliography_keys: meta::BibliographyElem::keys,
         heading: |level, title| meta::HeadingElem::new(title).with_level(level).pack(),
+        heading_func: meta::HeadingElem::func(),
         list_item: |body| layout::ListItem::new(body).pack(),
         enum_item: |number, body| {
             let mut elem = layout::EnumItem::new(body);

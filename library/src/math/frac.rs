@@ -2,7 +2,6 @@ use super::*;
 
 const FRAC_AROUND: Em = Em::new(0.1);
 
-/// # Fraction
 /// A mathematical fraction.
 ///
 /// ## Example
@@ -136,6 +135,7 @@ fn layout(
                 Geometry::Line(Point::with_x(line_width)).stroked(Stroke {
                     paint: TextElem::fill_in(ctx.styles()),
                     thickness,
+                    ..Stroke::default()
                 }),
                 span,
             ),

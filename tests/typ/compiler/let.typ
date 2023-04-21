@@ -33,11 +33,21 @@ Three
 #test(v3, 3)
 
 ---
+// Test parenthesised assignments.
+// Ref: false
+#let (a) = (1, 2)
+
+---
 // Ref: false
 // Simple destructuring.
 #let (a, b) = (1, 2)
 #test(a, 1)
 #test(b, 2)
+
+---
+// Ref: false
+#let (a,) = (1,)
+#test(a, 1)
 
 ---
 // Ref: false
@@ -114,10 +124,6 @@ Three
 ---
 // Error: 13-14 not enough elements to destructure
 #let (a, b, c) = (1, 2)
-
----
-// Error: 6-9 too many elements to destructure
-#let (a) = (1, 2)
 
 ---
 // Error: 6-20 not enough elements to destructure
@@ -214,6 +220,26 @@ Three
 
 // Error: 9-13 expected identifier, found boolean
 #let (..true) = false
+
+---
+#let _ = 4
+
+#for _ in range(2) []
+
+// Error: 2-3 unexpected underscore
+#_
+
+// Error: 8-9 unexpected underscore
+#lorem(_)
+
+// Error: 3-4 expected expression, found underscore
+#(_,)
+
+// Error: 3-4 expected expression, found underscore
+#{_}
+
+// Error: 8-9 expected expression, found underscore
+#{ 1 + _ }
 
 ---
 // Error: 13 expected equals sign

@@ -202,8 +202,10 @@ impl Finalize for RawElem {
 impl LocalName for RawElem {
     fn local_name(&self, lang: Lang) -> &'static str {
         match lang {
+            Lang::ARABIC => "قائمة",
             Lang::BOKMÅL => "Utskrift",
             Lang::CHINESE => "代码",
+            Lang::CZECH => "Seznam",
             Lang::FRENCH => "Liste",
             Lang::GERMAN => "Listing",
             Lang::ITALIAN => "Codice",
@@ -212,6 +214,7 @@ impl LocalName for RawElem {
             Lang::RUSSIAN => "Листинг",
             Lang::SLOVENIAN => "Program",
             Lang::UKRAINIAN => "Лістинг",
+            Lang::VIETNAMESE => "Chương trình", // TODO: This may be wrong.
             Lang::ENGLISH | _ => "Listing",
         }
     }
@@ -282,7 +285,7 @@ fn to_syn(RgbaColor { r, g, b, a }: RgbaColor) -> synt::Color {
 
 /// The syntect syntax definitions.
 static SYNTAXES: Lazy<syntect::parsing::SyntaxSet> =
-    Lazy::new(|| syntect::parsing::SyntaxSet::load_defaults_nonewlines());
+    Lazy::new(syntect::parsing::SyntaxSet::load_defaults_nonewlines);
 
 /// The default theme used for syntax highlighting.
 pub static THEME: Lazy<synt::Theme> = Lazy::new(|| synt::Theme {

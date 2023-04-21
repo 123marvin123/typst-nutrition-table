@@ -29,21 +29,24 @@ pub struct AccentElem {
     ///
     /// Supported accents include:
     ///
-    /// | Accent       | Name            | Codepoint |
-    /// | ------------ | --------------- | --------- |
-    /// | Grave        | `grave`         | <code>&DiacriticalGrave;</code> |
-    /// | Acute        | `acute`         | `´`       |
-    /// | Circumflex   | `hat`           | `^`       |
-    /// | Tilde        | `tilde`         | `~`       |
-    /// | Macron       | `macron`        | `¯`       |
-    /// | Breve        | `breve`         | `˘`       |
-    /// | Dot          | `dot`           | `.`       |
-    /// | Diaeresis    | `diaer`         | `¨`       |
-    /// | Circle       | `circle`        | `∘`       |
-    /// | Double acute | `acute.double`  | `˝`       |
-    /// | Caron        | `caron`         | `ˇ`       |
-    /// | Right arrow  | `arrow`, `->`   | `→`       |
-    /// | Left arrow   | `arrow.l`, `<-` | `←`       |
+    /// | Accent        | Name            | Codepoint |
+    /// | ------------- | --------------- | --------- |
+    /// | Grave         | `grave`         | <code>&DiacriticalGrave;</code> |
+    /// | Acute         | `acute`         | `´`       |
+    /// | Circumflex    | `hat`           | `^`       |
+    /// | Tilde         | `tilde`         | `~`       |
+    /// | Macron        | `macron`        | `¯`       |
+    /// | Breve         | `breve`         | `˘`       |
+    /// | Dot           | `dot`           | `.`       |
+    /// | Double dot    | `dot.double`    | `¨`       |
+    /// | Triple dot    | `dot.triple`    | <code>&tdot;</code> |
+    /// | Quadruple dot | `dot.quad`      | <code>&DotDot;</code> |
+    /// | Diaeresis     | `diaer`         | `¨`       |
+    /// | Circle        | `circle`        | `∘`       |
+    /// | Double acute  | `acute.double`  | `˝`       |
+    /// | Caron         | `caron`         | `ˇ`       |
+    /// | Right arrow   | `arrow`, `->`   | `→`       |
+    /// | Left arrow    | `arrow.l`, `<-` | `←`       |
     #[required]
     pub accent: Accent,
 }
@@ -88,7 +91,7 @@ impl LayoutMath for AccentElem {
         let mut frame = Frame::new(size);
         frame.set_baseline(baseline);
         frame.push_frame(accent_pos, accent);
-        frame.push_frame(base_pos, base.to_frame());
+        frame.push_frame(base_pos, base.into_frame());
         ctx.push(FrameFragment::new(ctx, frame).with_base_ascent(base_ascent));
 
         Ok(())

@@ -1,5 +1,7 @@
 use ecow::eco_format;
-use pdf_writer::types::{ActionType, AnnotationType, ColorSpaceOperand};
+use pdf_writer::types::{
+    ActionType, AnnotationType, ColorSpaceOperand, LineCapStyle, LineJoinStyle,
+};
 use pdf_writer::writers::ColorSpace;
 use pdf_writer::{Content, Filter, Finish, Name, Rect, Ref, Str};
 
@@ -7,8 +9,8 @@ use super::{deflate, AbsExt, EmExt, PdfContext, RefExt, D65_GRAY, SRGB};
 use crate::doc::{Destination, Frame, FrameItem, GroupItem, Meta, TextItem};
 use crate::font::Font;
 use crate::geom::{
-    self, Abs, Color, Em, Geometry, Numeric, Paint, Point, Ratio, Shape, Size, Stroke,
-    Transform,
+    self, Abs, Color, Em, Geometry, LineCap, LineJoin, Numeric, Paint, Point, Ratio,
+    Shape, Size, Stroke, Transform,
 };
 use crate::image::Image;
 
@@ -250,8 +252,17 @@ impl PageContext<'_, '_> {
 
     fn set_stroke(&mut self, stroke: &Stroke) {
         if self.state.stroke.as_ref() != Some(stroke) {
+            let Stroke {
+                paint,
+                thickness,
+                line_cap,
+                line_join,
+                dash_pattern,
+                miter_limit,
+            } = stroke;
+
             let f = |c| c as f32 / 255.0;
-            let Paint::Solid(color) = stroke.paint;
+            let Paint::Solid(color) = paint;
             match color {
                 Color::Luma(c) => {
                     self.set_stroke_color_space(D65_GRAY);
@@ -267,7 +278,26 @@ impl PageContext<'_, '_> {
                 }
             }
 
-            self.content.set_line_width(stroke.thickness.to_f32());
+            self.content.set_line_width(thickness.to_f32());
+            if self.state.stroke.as_ref().map(|s| &s.line_cap) != Some(line_cap) {
+                self.content.set_line_cap(line_cap.into());
+            }
+            if self.state.stroke.as_ref().map(|s| &s.line_join) != Some(line_join) {
+                self.content.set_line_join(line_join.into());
+            }
+            if self.state.stroke.as_ref().map(|s| &s.dash_pattern) != Some(dash_pattern) {
+                if let Some(pattern) = dash_pattern {
+                    self.content.set_dash_pattern(
+                        pattern.array.iter().map(|l| l.to_f32()),
+                        pattern.phase.to_f32(),
+                    );
+                } else {
+                    self.content.set_dash_pattern([], 0.0);
+                }
+            }
+            if self.state.stroke.as_ref().map(|s| &s.miter_limit) != Some(miter_limit) {
+                self.content.set_miter_limit(miter_limit.0 as f32);
+            }
             self.state.stroke = Some(stroke.clone());
         }
     }
@@ -453,7 +483,21 @@ fn write_image(ctx: &mut PageContext, x: f32, y: f32, image: &Image, size: Size)
     let h = size.y.to_f32();
     ctx.content.save_state();
     ctx.content.transform([w, 0.0, 0.0, -h, x, y + h]);
-    ctx.content.x_object(Name(name.as_bytes()));
+
+    if let Some(alt) = image.alt() {
+        let mut image_span =
+            ctx.content.begin_marked_content_with_properties(Name(b"Span"));
+        let mut image_alt = image_span.properties_direct();
+        image_alt.pair(Name(b"Alt"), pdf_writer::Str(alt.as_bytes()));
+        image_alt.finish();
+        image_span.finish();
+
+        ctx.content.x_object(Name(name.as_bytes()));
+        ctx.content.end_marked_content();
+    } else {
+        ctx.content.x_object(Name(name.as_bytes()));
+    }
+
     ctx.content.restore_state();
 }
 
@@ -485,4 +529,24 @@ fn write_link(ctx: &mut PageContext, pos: Point, dest: &Destination, size: Size)
     let rect = Rect::new(x1, y1, x2, y2);
 
     ctx.links.push((dest.clone(), rect));
+}
+
+impl From<&LineCap> for LineCapStyle {
+    fn from(line_cap: &LineCap) -> Self {
+        match line_cap {
+            LineCap::Butt => LineCapStyle::ButtCap,
+            LineCap::Round => LineCapStyle::RoundCap,
+            LineCap::Square => LineCapStyle::ProjectingSquareCap,
+        }
+    }
+}
+
+impl From<&LineJoin> for LineJoinStyle {
+    fn from(line_join: &LineJoin) -> Self {
+        match line_join {
+            LineJoin::Miter => LineJoinStyle::MiterJoin,
+            LineJoin::Round => LineJoinStyle::RoundJoin,
+            LineJoin::Bevel => LineJoinStyle::BevelJoin,
+        }
+    }
 }

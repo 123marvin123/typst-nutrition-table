@@ -5,6 +5,7 @@ mod ctx;
 mod accent;
 mod align;
 mod attach;
+mod cancel;
 mod delimited;
 mod frac;
 mod fragment;
@@ -20,6 +21,7 @@ mod underover;
 pub use self::accent::*;
 pub use self::align::*;
 pub use self::attach::*;
+pub use self::cancel::*;
 pub use self::delimited::*;
 pub use self::frac::*;
 pub use self::matrix::*;
@@ -71,6 +73,7 @@ pub fn module() -> Module {
     math.define("overbrace", OverbraceElem::func());
     math.define("underbracket", UnderbracketElem::func());
     math.define("overbracket", OverbracketElem::func());
+    math.define("cancel", CancelElem::func());
 
     // Fractions and matrix-likes.
     math.define("frac", FracElem::func());
@@ -274,8 +277,10 @@ impl Count for EquationElem {
 impl LocalName for EquationElem {
     fn local_name(&self, lang: Lang) -> &'static str {
         match lang {
+            Lang::ARABIC => "معادلة",
             Lang::BOKMÅL => "Ligning",
             Lang::CHINESE => "等式",
+            Lang::CZECH => "Rovnice",
             Lang::FRENCH => "Équation",
             Lang::GERMAN => "Gleichung",
             Lang::ITALIAN => "Equazione",
@@ -286,6 +291,7 @@ impl LocalName for EquationElem {
             Lang::SLOVENIAN => "Enačba",
             Lang::SPANISH => "Ecuación",
             Lang::UKRAINIAN => "Рівняння",
+            Lang::VIETNAMESE => "Phương trình",
             Lang::ENGLISH | _ => "Equation",
         }
     }
@@ -295,13 +301,12 @@ impl Refable for EquationElem {
     fn reference(
         &self,
         vt: &mut Vt,
-        styles: StyleChain,
         supplement: Option<Content>,
+        lang: Lang,
     ) -> SourceResult<Content> {
         // first we create the supplement of the heading
-        let mut supplement = supplement.unwrap_or_else(|| {
-            TextElem::packed(self.local_name(TextElem::lang_in(styles)))
-        });
+        let mut supplement =
+            supplement.unwrap_or_else(|| TextElem::packed(self.local_name(lang)));
 
         // we append a space if the supplement is not empty
         if !supplement.is_empty() {
@@ -309,7 +314,7 @@ impl Refable for EquationElem {
         };
 
         // we check for a numbering
-        let Some(numbering) = self.numbering(styles) else {
+        let Some(numbering) = self.numbering(StyleChain::default()) else {
             bail!(self.span(), "only numbered equations can be referenced");
         };
 
@@ -321,11 +326,11 @@ impl Refable for EquationElem {
         Ok(supplement + numbers)
     }
 
-    fn numbering(&self, styles: StyleChain) -> Option<Numbering> {
-        self.numbering(styles)
+    fn numbering(&self) -> Option<Numbering> {
+        self.numbering(StyleChain::default())
     }
 
-    fn counter(&self, _: StyleChain) -> Counter {
+    fn counter(&self) -> Counter {
         Counter::of(Self::func())
     }
 }
@@ -342,9 +347,18 @@ impl LayoutMath for EquationElem {
 
 impl LayoutMath for Content {
     fn layout_math(&self, ctx: &mut MathContext) -> SourceResult<()> {
+        // Directly layout the body of nested equations instead of handling it
+        // like a normal equation so that things like this work:
+        // ```
+        // #let my = $pi$
+        // $ my r^2 $
+        // ```
+        if let Some(elem) = self.to::<EquationElem>() {
+            return elem.layout_math(ctx);
+        }
+
         if let Some(realized) = ctx.realize(self)? {
-            realized.layout_math(ctx)?;
-            return Ok(());
+            return realized.layout_math(ctx);
         }
 
         if let Some(children) = self.to_sequence() {
