@@ -23,6 +23,10 @@ pub fn product(
     #[named]
     #[default(Ratio::one())]
     scaled: Ratio,
+    /// Additional notes that should be attached to the product.
+    #[named]
+    #[default(EcoString::new())]
+    notes: EcoString
 ) -> Value {
     if scaled.is_zero() {
         panic!("scale cannot be zero.");
@@ -119,6 +123,8 @@ pub fn product(
                 .into(),
         );
     }
+
+    result.insert("notes".into(), notes.into());
 
     result.insert("ok".into(), if status_code == 0 { false.into() } else { true.into() });
     result.into()

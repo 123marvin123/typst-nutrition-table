@@ -20,7 +20,9 @@
 #let fold_sum(a, k) = { a + k };
 
 #let display_product(prod) = {
-  ([#nutriscore(prod.nutriscore)], [#link(prod.url)[#prod.name]], [#calc.round(prod.scale) g/ml],
+  let name = if prod.notes.len() > 0 { [#link(prod.url)[#prod.name]; $bar.v$ #emph[#prod.notes]] } else { link(prod.url)[#prod.name] }
+  
+  ([#nutriscore(prod.nutriscore)], name, [#calc.round(prod.scale) g/ml],
   [#calc.round(prod.nutriments.energy) kcal],
 [#calc.round(prod.nutriments.carbohydrates, digits: 2)
 #prod.units.carbohydrates],
@@ -28,12 +30,14 @@
   [#calc.round(prod.nutriments.fat, digits: 2) #prod.units.fat], [#calc.round(prod.nutriments.salt, digits: 2) #prod.units.salt])
 }
 
-#let create_pseudo_product(name, cals, carbs, proteins, fats, salts, url: "", nutriscore: "?", scale: 1.0) = {
+#let create_pseudo_product(name, cals, carbs, proteins, fats, salts, url: 
+"", nutriscore: "?", scale: 1.0, notes: "") = {
   (name: name, scale: scale,
     nutriments: (carbohydrates: carbs, energy: cals, proteins: proteins, fat: fats, salt: salts), 
     units: (carbohydrates: "g", energy: "kcal", proteins: "g", fat: "g", salt: "g"),
     nutriscore: nutriscore,
     url: url,
+    notes: notes,
   )
 }
 
