@@ -26,7 +26,7 @@ pub fn product(
     /// Additional notes that should be attached to the product.
     #[named]
     #[default(EcoString::new())]
-    notes: EcoString
+    notes: EcoString,
 ) -> Value {
     if scaled.is_zero() {
         panic!("scale cannot be zero.");
