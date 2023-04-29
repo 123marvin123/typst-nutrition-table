@@ -87,16 +87,26 @@ impl MathRow {
         self.iter().map(MathFragment::width).sum()
     }
 
-    pub fn height(&self) -> Abs {
-        self.ascent() + self.descent()
-    }
-
     pub fn ascent(&self) -> Abs {
         self.iter().map(MathFragment::ascent).max().unwrap_or_default()
     }
 
     pub fn descent(&self) -> Abs {
         self.iter().map(MathFragment::descent).max().unwrap_or_default()
+    }
+
+    pub fn class(&self) -> MathClass {
+        // Predict the class of the output of 'into_fragment'
+        if self.0.len() == 1 {
+            self.0
+                .first()
+                .and_then(|fragment| fragment.class())
+                .unwrap_or(MathClass::Special)
+        } else {
+            // FrameFragment::new() (inside 'into_fragment' in this branch) defaults
+            // to MathClass::Normal for its class.
+            MathClass::Normal
+        }
     }
 
     pub fn into_frame(self, ctx: &MathContext) -> Frame {
@@ -136,8 +146,7 @@ impl MathRow {
                 rows.pop();
             }
 
-            let width = rows.iter().map(|row| row.width()).max().unwrap_or_default();
-            let points = alignments(&rows);
+            let AlignmentResult { points, width } = alignments(&rows);
             let mut frame = Frame::new(Size::zero());
 
             for (i, row) in rows.into_iter().enumerate() {

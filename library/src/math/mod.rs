@@ -34,6 +34,7 @@ use ttf_parser::{GlyphId, Rect};
 use typst::eval::{Module, Scope};
 use typst::font::{Font, FontWeight};
 use typst::model::Guard;
+use typst::util::option_eq;
 use unicode_math_class::MathClass;
 
 use self::ctx::*;
@@ -173,6 +174,7 @@ impl Synthesize for EquationElem {
 }
 
 impl Show for EquationElem {
+    #[tracing::instrument(name = "EquationElem::show", skip_all)]
     fn show(&self, _: &mut Vt, styles: StyleChain) -> SourceResult<Content> {
         let mut realized = self.clone().pack().guarded(Guard::Base(Self::func()));
         if self.block(styles) {
@@ -193,6 +195,7 @@ impl Finalize for EquationElem {
 }
 
 impl Layout for EquationElem {
+    #[tracing::instrument(name = "EquationElem::layout", skip_all)]
     fn layout(
         &self,
         vt: &mut Vt,
@@ -275,10 +278,11 @@ impl Count for EquationElem {
 }
 
 impl LocalName for EquationElem {
-    fn local_name(&self, lang: Lang) -> &'static str {
+    fn local_name(&self, lang: Lang, region: Option<Region>) -> &'static str {
         match lang {
             Lang::ARABIC => "معادلة",
             Lang::BOKMÅL => "Ligning",
+            Lang::CHINESE if option_eq(region, "TW") => "方程式",
             Lang::CHINESE => "等式",
             Lang::CZECH => "Rovnice",
             Lang::FRENCH => "Équation",
@@ -303,10 +307,11 @@ impl Refable for EquationElem {
         vt: &mut Vt,
         supplement: Option<Content>,
         lang: Lang,
+        region: Option<Region>,
     ) -> SourceResult<Content> {
         // first we create the supplement of the heading
         let mut supplement =
-            supplement.unwrap_or_else(|| TextElem::packed(self.local_name(lang)));
+            supplement.unwrap_or_else(|| TextElem::packed(self.local_name(lang, region)));
 
         // we append a space if the supplement is not empty
         if !supplement.is_empty() {
@@ -340,12 +345,14 @@ pub trait LayoutMath {
 }
 
 impl LayoutMath for EquationElem {
+    #[tracing::instrument(skip(ctx))]
     fn layout_math(&self, ctx: &mut MathContext) -> SourceResult<()> {
         self.body().layout_math(ctx)
     }
 }
 
 impl LayoutMath for Content {
+    #[tracing::instrument(skip(ctx))]
     fn layout_math(&self, ctx: &mut MathContext) -> SourceResult<()> {
         // Directly layout the body of nested equations instead of handling it
         // like a normal equation so that things like this work:

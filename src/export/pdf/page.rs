@@ -15,6 +15,7 @@ use crate::geom::{
 use crate::image::Image;
 
 /// Construct page objects.
+#[tracing::instrument(skip_all)]
 pub fn construct_pages(ctx: &mut PdfContext, frames: &[Frame]) {
     for frame in frames {
         construct_page(ctx, frame);
@@ -22,6 +23,7 @@ pub fn construct_pages(ctx: &mut PdfContext, frames: &[Frame]) {
 }
 
 /// Construct a page object.
+#[tracing::instrument(skip_all)]
 pub fn construct_page(ctx: &mut PdfContext, frame: &Frame) {
     let page_ref = ctx.alloc.bump();
     ctx.page_refs.push(page_ref);
@@ -64,6 +66,7 @@ pub fn construct_page(ctx: &mut PdfContext, frame: &Frame) {
 }
 
 /// Write the page tree.
+#[tracing::instrument(skip_all)]
 pub fn write_page_tree(ctx: &mut PdfContext) {
     for page in std::mem::take(&mut ctx.pages).into_iter() {
         write_page(ctx, page);
@@ -100,6 +103,7 @@ pub fn write_page_tree(ctx: &mut PdfContext) {
 }
 
 /// Write a page tree node.
+#[tracing::instrument(skip_all)]
 fn write_page(ctx: &mut PdfContext, page: Page) {
     let content_id = ctx.alloc.bump();
 
@@ -413,7 +417,15 @@ fn write_text(ctx: &mut PageContext, x: f32, y: f32, text: &TextItem) {
 
 /// Encode a geometrical shape into the content stream.
 fn write_shape(ctx: &mut PageContext, x: f32, y: f32, shape: &Shape) {
-    if shape.fill.is_none() && shape.stroke.is_none() {
+    let stroke = shape.stroke.as_ref().and_then(|stroke| {
+        if stroke.thickness.to_f32() > 0.0 {
+            Some(stroke)
+        } else {
+            None
+        }
+    });
+
+    if shape.fill.is_none() && stroke.is_none() {
         return;
     }
 
@@ -421,7 +433,7 @@ fn write_shape(ctx: &mut PageContext, x: f32, y: f32, shape: &Shape) {
         ctx.set_fill(fill);
     }
 
-    if let Some(stroke) = &shape.stroke {
+    if let Some(stroke) = stroke {
         ctx.set_stroke(stroke);
     }
 
@@ -444,7 +456,7 @@ fn write_shape(ctx: &mut PageContext, x: f32, y: f32, shape: &Shape) {
         }
     }
 
-    match (&shape.fill, &shape.stroke) {
+    match (&shape.fill, stroke) {
         (None, None) => unreachable!(),
         (Some(_), None) => ctx.content.fill_nonzero(),
         (None, Some(_)) => ctx.content.stroke(),

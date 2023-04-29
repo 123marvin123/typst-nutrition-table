@@ -126,6 +126,7 @@ impl Construct for ParElem {
 
 impl ParElem {
     /// Layout the paragraph into a collection of lines.
+    #[tracing::instrument(name = "ParElement::layout", skip_all)]
     pub fn layout(
         &self,
         vt: &mut Vt,
@@ -1279,7 +1280,7 @@ fn commit(
         }
     }
 
-    // Determine how much addtional space is needed.
+    // Determine how much additional space is needed.
     // The justicication_ratio is for the first step justification,
     // extra_justification is for the last step.
     // For more info on multi-step justification, see Procedures for Inter-
